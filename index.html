@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anti Praktis Arena</title>
+    <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { 
+            margin: 0; padding: 20px; font-family: Arial, sans-serif; 
+            background-color: #131722; color: white; text-align: center; 
+        }
+        #chart { width: 100%; height: 350px; margin-bottom: 10px; }
+        #error-log { color: #ef5350; font-weight: bold; } /* Teks merah untuk error */
+        #pnl-display { font-size: 20px; font-weight: bold; margin-bottom: 15px; height: 24px; }
+        button { 
+            padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; 
+            border: none; cursor: pointer; background-color: #26a69a; color: white; width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Arena Trading</h2>
+    
+    <p id="error-log"></p> 
+    
+    <div id="chart"></div>
+    <div id="pnl-display"></div>
+    
+    <button id="trade-btn" onclick="toggleTrade()">BUY XAUUSD</button>
+
+    <script>
+        // 1. RADAR PENANGKAP ERROR
+        // Jika ada yang rusak, akan ditulis di layar
+        window.onerror = function(message, source, lineno) {
+            document.getElementById('error-log').innerText = "Terjadi Error di Baris " + lineno + ": " + message;
+            return true;
+        };
+
+        // Deklarasi variabel di awal agar aman
+        let isTrading = false;
+        let entryPrice = 0;
+
+        // 2. SETUP GRAFIK
+        const chartElement = document.getElementById('chart');
+        const chart = LightweightCharts.createChart(chartElement, { 
+            width: chartElement.clientWidth, 
+            height: 350,
+            layout: { backgroundColor: '#131722', textColor: '#d1d4dc' },
+            grid: { vertLines: { color: '#363c4e' }, horzLines: { color: '#363c4e' } },
+            timeScale: { timeVisible: true }
+        });
+        const candleSeries = chart.addCandlestickSeries();
+
+        // 3. BIKIN DATA MASA LALU
+        let currentPrice = 2350.00; 
+        let currentTime = Math.floor(Date.now() / 1000) - (60 * 50); 
+        const historyData = [];
+
+        for(let i = 0; i < 50; i++) {
+            let open = currentPrice;
+            let close = open + ((Math.random() - 0.5) * 4);
+            let high = Math.max(open, close) + (Math.random() * 2);
+            let low = Math.min(open, close) - (Math.random() * 2);
+            
+            // Format angka agar rapi dan tidak membuat grafik crash
+            historyData.push({ 
+                time: currentTime, 
+                open: parseFloat(open.toFixed(2)), 
+                high: parseFloat(high.toFixed(2)), 
+                low: parseFloat(low.toFixed(2)), 
+                close: parseFloat(close.toFixed(2)) 
+            });
+            
+            currentPrice = close;
+            currentTime += 60; 
+        }
+        
+        candleSeries.setData(historyData);
+        chart.timeScale().fitContent();
+
+        // 4. MESIN LIVE (Jalan tiap 1 detik)
+        setInterval(() => {
+            currentTime += 60; 
+            let open = currentPrice;
+            let close = open + ((Math.random() - 0.5) * 4);
+            let high = Math.max(open, close) + (Math.random() * 2);
+            let low = Math.min(open, close) - (Math.random() * 2);
+
+            candleSeries.update({
+                time: currentTime, 
+                open: parseFloat(open.toFixed(2)), 
+                high: parseFloat(high.toFixed(2)), 
+                low: parseFloat(low.toFixed(2)), 
+                close: parseFloat(close.toFixed(2))
+            });
+            
+            currentPrice = close; 
+
+            // Hitung Floating PnL
+            if (isTrading) {
+                let pnl = currentPrice - entryPrice;
+                let pnlEl = document.getElementById('pnl-display');
+                pnlEl.innerText = "Floating PnL: $" + pnl.toFixed(2);
+                pnlEl.style.color = pnl >= 0 ? '#26a69a' : '#ef5350';
+            }
+        }, 1000);
+
+        // 5. LOGIKA TOMBOL BUY/CLOSE
+        function toggleTrade() {
+            let btn = document.getElementById('trade-btn');
+            
+            if (!isTrading) {
+                isTrading = true;
+                entryPrice = currentPrice;
+                btn.innerText = "CLOSE TRADE";
+                btn.style.backgroundColor = "#ef5350"; // Merah
+                document.getElementById('pnl-display').innerText = "Floating PnL: $0.00";
+            } else {
+                isTrading = false;
+                let finalPnl = currentPrice - entryPrice;
+                btn.innerText = "BUY XAUUSD";
+                btn.style.backgroundColor = "#26a69a"; // Hijau
+                document.getElementById('pnl-display').innerText = ""; 
+                
+                let status = finalPnl >= 0 ? "WIN ✅" : "LOSS ❌";
+                alert(`Trade Selesai!\nStatus: ${status}\nTotal PnL: $${finalPnl.toFixed(2)}`);
+            }
+        }
+    </script>
+</body>
+</html>
